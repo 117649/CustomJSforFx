@@ -15,6 +15,8 @@ let _uc = {
   BROWSERCHROME: browser_chrome,
   PREF_ENABLED: 'userChromeJS.enabled',
   PREF_SCRIPTSDISABLED: 'userChromeJS.scriptsDisabled',
+  chromedir: Services.dirsvc.get('UChrm', Ci.nsIFile),
+  sss: Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService),
 
   getScripts: function () {
     this.scripts = {};
@@ -132,6 +134,14 @@ let _uc = {
       if (fun(doc, win, loc))
         break;
     }
+  },
+
+  createElement: function (doc, tag, atts, XUL = true) {
+    let el = XUL ? doc.createXULElement(tag) : doc.createElement(tag);
+    for (let att in atts) {
+      el.setAttribute(att, atts[att]);
+    }
+    return el
   },
 
   error: function (aMsg, err) {
