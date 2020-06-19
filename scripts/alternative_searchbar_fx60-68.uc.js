@@ -32,7 +32,7 @@
 var clear_searchbar_after_search = false; // clear input after search (true) or not (false)
 var revert_to_first_engine_after_search = false; // revert to first engine (true) or not (false)
 var old_search_engine_selection_popup_fx64 = false; // show old search engine selection popup (true) or not (false)
-var select_engine_by_scrolling_over_button = false; // select search engine by scrolling mouse wheel over search bars button (true) or not (false)
+var select_engine_by_scrolling_over_button = true; // select search engine by scrolling mouse wheel over search bars button (true) or not (false)
 var hide_oneoff_search_engines = false; // hide 'one off' search engines (true) or not (false)
 var hide_addengines_plus_indicator = false; // hide add engines '+' sign (true) or not (false)
 var hide_placeholder = false; // hide placeholder (true) or not (false)
@@ -40,283 +40,356 @@ var switch_glass_and_engine_icon = false; // swap icons of search engine button 
 var show_search_engine_names = false; // show search engine names (true) or not (false)
 var show_search_engine_names_with_scrollbar = false; // show search engine names with scrollbars (true) or not (false)
 var show_search_engine_names_with_scrollbar_height = '170px'; // higher values show more search engines
+var initialization_delay_value = 1000; // some systems might require a higher value than '1' second (=1000ms) and on some even '0' is enough
 var searchsettingslabel = "Search Settings";
 var hide_popup_when_selecting_engine_with_hotkeys = true; // hide popup when using 'CTRL or MOUSE WHEEL + UP&DOWN keys' to switch engine (true) or not (false)
+
+var select_engine_by_click_oneoffs_button = true;
 // Configuration area - end
 
+var isInCustomize = 1; //start at 1 to set it once at startup
 
 var AltSearchbar = {
- init: function() {
+	init: function () {
 
-  setTimeout(function(){
-   try {
-	var searchbar = document.getElementById("searchbar");
-	var appversion = parseInt(Services.appinfo.version);
+		setTimeout(function () {
+			try {
+				var searchbar = document.getElementById("searchbar");
+				var appversion = parseInt(Services.appinfo.version);
 
-	updateStyleSheet();
+				updateStyleSheet();
 
-	if(hide_placeholder)
-	  hideSearchbarsPlaceholder();
+				if (hide_placeholder)
+					hideSearchbarsPlaceholder();
 
-	if(select_engine_by_scrolling_over_button)
-	  selectEngineByScrollingOverButton();
+				if (select_engine_by_scrolling_over_button)
+					selectEngineByScrollingOverButton();
 
-	if(old_search_engine_selection_popup_fx64)
-	  createOldSelectionPopup();
+				if (old_search_engine_selection_popup_fx64)
+					createOldSelectionPopup();
 
-	// select search engine by scrolling mouse wheel over search bars button
-	function selectEngineByScrollingOverButton() {
-	  searchbar.addEventListener("DOMMouseScroll", (event) => {
-		if (event.originalTarget.classList.contains("searchbar-search-button")) {
-          searchbar.selectEngine(event, event.detail > 0);
-		}
-	  }, true);
-	};
+				if (select_engine_by_click_oneoffs_button)
+					selectEngineByClickOneoffsButton();
 
-	// hide placeholder
-	function hideSearchbarsPlaceholder() {
-	  searchbar.getElementsByClassName('searchbar-textbox')[0].removeAttribute("placeholder");
-	};
+				// select search engine by scrolling mouse wheel over search bars button
+				function selectEngineByScrollingOverButton() {
+					searchbar.addEventListener("DOMMouseScroll", (event) => {
+						if (event.originalTarget.classList.contains("searchbar-search-button")) {
+							searchbar.selectEngine(event, event.detail > 0);
+						}
+					}, true);
+				};
 
-	// old search selection popup
-	function createOldSelectionPopup() {
+				// left click on off select engine
+				function selectEngineByClickOneoffsButton() {
+					var searchoneoffs = searchbar.textbox.popup.oneOffButtons;
+					searchoneoffs.container.addEventListener("click", (event) => {
+						if (!(event instanceof KeyboardEvent) && (event.button == 0)) {
+							event.stopPropagation();
+							event.target.classList.add("search-one-offs-context-set-default");
+							searchoneoffs._contextEngine = event.target.engine;
+							searchoneoffs._on_command(event);
+							searchoneoffs._contextEngine = null;
+							// let contextEngine = event.target.engine;
+							// let currentEngine = searchbar.currentEngine;
+							// if (!searchoneoffs.getAttribute("includecurrentengine")) {
+							// 	// Make the target button of the context menu reflect the current
+							// 	// search engine first. Doing this as opposed to rebuilding all the
+							// 	// one-off buttons avoids flicker.
+							// 	let button = searchoneoffs._buttonForEngine(contextEngine);
+							// 	button.id = searchoneoffs._buttonIDForEngine(currentEngine);
+							// 	let uri = "chrome://browser/skin/search-engine-placeholder.png";
+							// 	if (currentEngine.iconURI) {
+							// 		uri = currentEngine.iconURI.spec;
+							// 	}
+							// 	button.setAttribute("image", uri);
+							// 	button.setAttribute("tooltiptext", currentEngine.name);
+							// 	button.engine = currentEngine;
+							// }
+							// searchbar.currentEngine = contextEngine;
+						}
+					}, true);
+				};
 
-		var engines_promise = Services.search.getVisibleEngines();
+				// hide placeholder
+				function hideSearchbarsPlaceholder() {
+					searchbar.getElementsByClassName('searchbar-textbox')[0].removeAttribute("placeholder");
+				};
 
-		// set new search engine
-		searchbar.setNewSearchEngine = function(index) {
-			searchbar.currentEngine = searchbar.engines[index];
-		};
-
-		// create search popup
-	    if(appversion <= 62) searchbuttonpopup = document.createElement("menupopup");
-		else searchbuttonpopup = document.createXULElement("menupopup");
-		searchbuttonpopup.setAttribute("id", "searchbuttonpopup");
-		searchbuttonpopup.setAttribute("width", searchbar.firstChild.nextSibling.getBoundingClientRect().width - 6 );
-		searchbuttonpopup.setAttribute("position", "after_start");
-	  
-		try {
-			
-		 engines_promise.then(
-			(engines) => 
-			
-			{
-				searchbar.engines = engines;
-				for (var i = 0; i <= engines.length - 1; ++i) {
-					
-					if(appversion <= 62) menuitem = document.createElement("menuitem");
-					else menuitem = document.createXULElement("menuitem");
-					menuitem.setAttribute("label", engines[i].name);
-					menuitem.setAttribute("class", "menuitem-iconic searchbar-engine-menuitem menuitem-with-favicon");
-	
-					if (engines[i] == searchbar.currentEngine)
-						menuitem.setAttribute("selected", "true");
-	
-					if (engines[i].iconURI)
-						menuitem.setAttribute("image",engines[i].iconURI.spec);
-					
-					menuitem.setAttribute("oncommand", "document.getElementById('searchbar').setNewSearchEngine("+i+")");
-						searchbuttonpopup.appendChild(menuitem);
-  
+				function attachOldPopupToButton(e) {
+					if (isInCustomize == 1) {
+						setTimeout(function () {
+							// document.getAnonymousElementByAttribute(searchbar.firstChild.nextSibling, "class", "searchbar-search-button").setAttribute("popup", "searchbuttonpopup");
+							searchbar.getElementsByClassName("searchbar-search-button")[0].setAttribute("popup", "searchbuttonpopup");
+						}, initialization_delay_value);
+					}
+					if (isInCustomize > 0)
+						isInCustomize--;
 				}
-	
-				if(appversion <= 62) menuseparator_om = document.createElement("menuseparator");
-				  else menuseparator_om = document.createXULElement("menuseparator");
-				searchbuttonpopup.appendChild(menuseparator_om);
-				if(appversion <= 62) menuitem_om = document.createElement("menuitem");
-				  else menuitem_om = document.createXULElement("menuitem");
-				menuitem_om.setAttribute("label", searchsettingslabel);
-				menuitem_om.setAttribute("class", "open-engine-manager");
-				menuitem_om.setAttribute("oncommand", "openPreferences('search');");
-				searchbuttonpopup.appendChild(menuitem_om);		
-	
-			}
-		  );
-	  }
-	  catch(exc) {
-		  console.log("Exception: " + exc);
-	  }
 
-	  document.getElementById("mainPopupSet").appendChild(searchbuttonpopup);
+				// old search selection popup
+				function createOldSelectionPopup() {
 
-	  /* adjust popup width*/
-	  setTimeout(function(){
-		document.getElementById('searchbuttonpopup').setAttribute("width", document.getElementById("searchbar").firstChild.nextSibling.getBoundingClientRect().width);
-	  },1000);
+					var engines_promise = Services.search.getVisibleEngines();
 
-	  var observer = new MutationObserver(function(mutations) {
-		mutations.forEach(function(mutation) {
-		 try {
-		  document.getElementById('searchbuttonpopup').setAttribute("width", document.getElementById("searchbar").firstChild.nextSibling.getBoundingClientRect().width );
-		 } catch(e){}
-		});
-	  });
+					window.addEventListener("beforecustomization", function (e) { isInCustomize++; }, false);
+					window.addEventListener("aftercustomization", attachOldPopupToButton, false);
 
-	  try {
-		observer.observe(document.getElementById('search-container'), { attributes: true, attributeFilter: ['width'] });
-	  } catch(e){}
+					// set new search engine
+					searchbar.setNewSearchEngine = function (index) {
+						searchbar.currentEngine = searchbar.engines[index];
+					};
 
-  	  var observer2 = new MutationObserver(function(mutations) {
-		mutations.forEach(function(mutation) {
-		 try {
-		  document.getElementById('searchbuttonpopup').setAttribute("width", document.getElementById("searchbar").firstChild.nextSibling.getBoundingClientRect().width );
-		 } catch(e){}
-		});
-	  });
+					// create search popup
+					if (appversion <= 62) searchbuttonpopup = document.createElement("menupopup");
+					else searchbuttonpopup = document.createXULElement("menupopup");
+					searchbuttonpopup.setAttribute("id", "searchbuttonpopup");
+					searchbuttonpopup.setAttribute("width", searchbar.firstChild.nextSibling.getBoundingClientRect().width - 6);
+					searchbuttonpopup.setAttribute("position", "after_start");
 
-	  try {
-		observer2.observe(document.getElementById('main-window'), { attributes: true, attributeFilter: ['sizemode'] });
-	  } catch(e){}
+					try {
 
-	  // attach new popup to search bars search button
-	  document.getAnonymousElementByAttribute(searchbar.firstChild.nextSibling, "class", "searchbar-search-button").setAttribute("popup", "searchbuttonpopup");
+						engines_promise.then(
+							(engines) => {
+								searchbar.engines = engines;
+								for (var i = 0; i <= engines.length - 1; ++i) {
 
-	  // hide default popup when clicking on search button
-	  searchbar.addEventListener("mousedown", (event) => {
-	   if (event.originalTarget.classList.contains("searchbar-search-button")) {
-		document.getElementById('PopupSearchAutoComplete').hidePopup();
-		document.getElementById("PopupSearchAutoComplete").style.visibility="collapse";
+									if (appversion <= 62) menuitem = document.createElement("menuitem");
+									else menuitem = document.createXULElement("menuitem");
+									menuitem.setAttribute("label", engines[i].name);
+									menuitem.setAttribute("class", "menuitem-iconic searchbar-engine-menuitem menuitem-with-favicon");
 
-		setTimeout(function() {
-		 document.getElementById("PopupSearchAutoComplete").style.visibility="visible";
-		 document.getElementById('PopupSearchAutoComplete').hidePopup();
-		}, 1000);
+									if (engines[i] == searchbar.currentEngine)
+										menuitem.setAttribute("selected", "true");
 
-	   }
-	  }, true);
+									if (engines[i].iconURI)
+										menuitem.setAttribute("image", engines[i].iconURI.spec);
 
-	}; //createOldSelectionPopup
-	
-	// doSearch function taken from Firefox 60s internal 'searchbar.xml' file and added modifications
-	if(appversion < 63) searchbar.doSearch = function(aData, aWhere, aEngine) {
+									menuitem.setAttribute("oncommand", "document.getElementById('searchbar').setNewSearchEngine(" + i + ")");
+									searchbuttonpopup.appendChild(menuitem);
 
-      var textBox = this._textbox;
+								}
 
-      if (aData && !PrivateBrowsingUtils.isWindowPrivate(window)) {
-         this.FormHistory.update(
-           { op : "bump",
-             fieldname : textBox.getAttribute("autocompletesearchparam"),
-             value : aData },
-           { handleError : function(aError) {
-               Components.utils.reportError("Saving search to form history failed: " + aError.message);
-           }});
-       }
+								if (appversion <= 62) menuseparator_om = document.createElement("menuseparator");
+								else menuseparator_om = document.createXULElement("menuseparator");
+								searchbuttonpopup.appendChild(menuseparator_om);
+								if (appversion <= 62) menuitem_om = document.createElement("menuitem");
+								else menuitem_om = document.createXULElement("menuitem");
+								menuitem_om.setAttribute("label", searchsettingslabel);
+								menuitem_om.setAttribute("class", "open-engine-manager");
+								menuitem_om.setAttribute("oncommand", "openPreferences('search');");
+								searchbuttonpopup.appendChild(menuitem_om);
 
-       let engine = aEngine || this.currentEngine;
-       var submission = engine.getSubmission(aData, null, "searchbar");
-       let params = {
-         postData: submission.postData,
-         inBackground: aWhere == "tab-background"
-       };
+							}
+						);
+					}
+					catch (exc) {
+						console.log("Exception: " + exc);
+					}
 
-       openUILinkIn(submission.uri.spec,aWhere == "tab-background" ? "tab" : aWhere,params);
+					document.getElementById("mainPopupSet").appendChild(searchbuttonpopup);
 
-	  if(clear_searchbar_after_search)
-		this.value = '';
+					/* adjust popup width*/
+					setTimeout(function () {
+						document.getElementById('searchbuttonpopup').setAttribute("width", document.getElementById("searchbar").firstChild.nextSibling.getBoundingClientRect().width);
+					}, 1000);
 
-	  if(revert_to_first_engine_after_search) {
-		  this.currentEngine = this.engines ? this.engines[0] : this._engines[0];
-		  updateStyleSheet();
-	  }
-	};
-	// doSearch function taken from Firefox 64s internal 'searchbar.js' file and added modifications
-	if(appversion >= 63) searchbar.doSearch = function(aData, aWhere, aEngine, aParams, aOneOff) {
-	  let textBox = this._textbox;
+					var observer = new MutationObserver(function (mutations) {
+						mutations.forEach(function (mutation) {
+							try {
+								document.getElementById('searchbuttonpopup').setAttribute("width", document.getElementById("searchbar").firstChild.nextSibling.getBoundingClientRect().width);
+							} catch (e) { }
+						});
+					});
 
-	  if (aData && !PrivateBrowsingUtils.isWindowPrivate(window) && this.FormHistory.enabled) {
-		this.FormHistory.update({
-			op: "bump",
-			fieldname: textBox.getAttribute("autocompletesearchparam"),
-			value: aData,
-		}, {
-			handleError(aError) {
-			  Cu.reportError("Saving search to form history failed: " + aError.message);
-			},
-		});
-	  }
+					try {
+						observer.observe(document.getElementById('search-container'), { attributes: true, attributeFilter: ['width'] });
+					} catch (e) { }
 
-	  let engine = aEngine || this.currentEngine;
-	  let submission = engine.getSubmission(aData, null, "searchbar");
-	  let telemetrySearchDetails = this.telemetrySearchDetails;
-	  this.telemetrySearchDetails = null;
-	  if (telemetrySearchDetails && telemetrySearchDetails.index == -1) {
-		telemetrySearchDetails = null;
-	  }
+					var observer2 = new MutationObserver(function (mutations) {
+						mutations.forEach(function (mutation) {
+							try {
+								document.getElementById('searchbuttonpopup').setAttribute("width", document.getElementById("searchbar").firstChild.nextSibling.getBoundingClientRect().width);
+							} catch (e) { }
+						});
+					});
 
-	  const details = {
-		isOneOff: aOneOff,
-		isSuggestion: (!aOneOff && telemetrySearchDetails),
-		selection: telemetrySearchDetails,
-	  };
-	  BrowserSearch.recordSearchInTelemetry(engine, "searchbar", details);
+					try {
+						observer2.observe(document.getElementById('main-window'), { attributes: true, attributeFilter: ['sizemode'] });
+					} catch (e) { }
 
-	  let params = {
-		postData: submission.postData,
-	  };
-	  if (aParams) {
-		for (let key in aParams) {
-		  params[key] = aParams[key];
-		}
-	  }
-	  openTrustedLinkIn(submission.uri.spec, aWhere, params);
+					// attach new popup to search bars search button
+					try {
+						attachOldPopupToButton();
+					}
+					catch (e) {
+						console.log("AltSearchbar: Failed to attach new popup to search bar search button");
+					}
 
-		if(clear_searchbar_after_search)
-			this.value = '';
-		  
-		if(revert_to_first_engine_after_search) {
-			this.currentEngine = this.engines ? this.engines[0] : this._engines[0];
-			updateStyleSheet();
-		}
-	};
+					// hide default popup when clicking on search button
+					searchbar.addEventListener("mousedown", (event) => {
+						if (event.originalTarget.classList.contains("searchbar-search-button")) {
+							document.getElementById('PopupSearchAutoComplete').hidePopup();
+							document.getElementById("PopupSearchAutoComplete").style.visibility = "collapse";
 
-	// setIcon function taken from browsers internal 'searchbar.js' file and added modifications
-	searchbar.setIcon = function(element, uri) {
-	  element.setAttribute("src", uri);
-	  updateStyleSheet();
-	};
-	
-	// override selectEngine function and remove automatic popup opening
-	if(hide_popup_when_selecting_engine_with_hotkeys) searchbar.selectEngine = function(aEvent, isNextEngine) {
-      // Find the new index
-      let newIndex = this.engines.indexOf(this.currentEngine);
-      newIndex += isNextEngine ? 1 : -1;
+							setTimeout(function () {
+								document.getElementById("PopupSearchAutoComplete").style.visibility = "visible";
+								document.getElementById('PopupSearchAutoComplete').hidePopup();
+							}, 1000);
 
-      if (newIndex >= 0 && newIndex < this.engines.length) {
-        this.currentEngine = this.engines[newIndex];
-      }
+						}
+					}, true);
 
-      aEvent.preventDefault();
-      aEvent.stopPropagation();
+				}; //createOldSelectionPopup
 
-	};
+				// doSearch function taken from Firefox 60s internal 'searchbar.xml' file and added modifications
+				if (appversion < 63) searchbar.doSearch = function (aData, aWhere, aEngine) {
 
-	// main style sheet
-	function updateStyleSheet() {
-	  var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"].getService(Components.interfaces.nsIStyleSheetService);
+					var textBox = this._textbox;
 
-	  var hide_oneoff_search_engines_code = '';
-	  var show_search_engine_names_code = '';
-	  var show_search_engine_names_with_scrollbar_code = '';
-	  var hide_addengines_plus_indicator_code = '';
-	  var switch_glass_and_engine_icon_code = '';
+					if (aData && !PrivateBrowsingUtils.isWindowPrivate(window)) {
+						this.FormHistory.update(
+							{
+								op: "bump",
+								fieldname: textBox.getAttribute("autocompletesearchparam"),
+								value: aData
+							},
+							{
+								handleError: function (aError) {
+									Components.utils.reportError("Saving search to form history failed: " + aError.message);
+								}
+							});
+					}
 
-	  if(hide_oneoff_search_engines)
-		hide_oneoff_search_engines_code=' \
+					let engine = aEngine || this.currentEngine;
+					var submission = engine.getSubmission(aData, null, "searchbar");
+					let params = {
+						postData: submission.postData,
+						inBackground: aWhere == "tab-background"
+					};
+
+					openUILinkIn(submission.uri.spec, aWhere == "tab-background" ? "tab" : aWhere, params);
+
+					if (clear_searchbar_after_search)
+						this.value = '';
+
+					if (revert_to_first_engine_after_search) {
+						this.currentEngine = this.engines ? this.engines[0] : this._engines[0];
+						updateStyleSheet();
+					}
+				};
+				// doSearch function taken from Firefox 64s internal 'searchbar.js' file and added modifications
+				if (appversion >= 63) searchbar.doSearch = function (aData, aWhere, aEngine, aParams, aOneOff) {
+					let textBox = this._textbox;
+
+					if (aData && !PrivateBrowsingUtils.isWindowPrivate(window) && this.FormHistory.enabled) {
+						this.FormHistory.update({
+							op: "bump",
+							fieldname: textBox.getAttribute("autocompletesearchparam"),
+							value: aData,
+						}, {
+							handleError(aError) {
+								Cu.reportError("Saving search to form history failed: " + aError.message);
+							},
+						});
+					}
+
+					let engine = aEngine || this.currentEngine;
+					let submission = engine.getSubmission(aData, null, "searchbar");
+					let telemetrySearchDetails = this.telemetrySearchDetails;
+					this.telemetrySearchDetails = null;
+					if (telemetrySearchDetails && telemetrySearchDetails.index == -1) {
+						telemetrySearchDetails = null;
+					}
+
+					const details = {
+						isOneOff: aOneOff,
+						isSuggestion: (!aOneOff && telemetrySearchDetails),
+						selection: telemetrySearchDetails,
+					};
+					BrowserSearch.recordSearchInTelemetry(engine, "searchbar", details);
+
+					let params = {
+						postData: submission.postData,
+					};
+					if (aParams) {
+						for (let key in aParams) {
+							params[key] = aParams[key];
+						}
+					}
+					openTrustedLinkIn(submission.uri.spec, aWhere, params);
+
+					if (clear_searchbar_after_search)
+						this.value = '';
+
+					if (revert_to_first_engine_after_search) {
+						this.currentEngine = this.engines ? this.engines[0] : this._engines[0];
+						updateStyleSheet();
+					}
+				};
+
+				// setIcon function taken from browsers internal 'searchbar.js' file and added modifications
+				searchbar.setIcon = function (element, uri) {
+					element.setAttribute("src", uri);
+					updateStyleSheet();
+				};
+
+				// override selectEngine function and remove automatic popup opening
+				if (hide_popup_when_selecting_engine_with_hotkeys) searchbar.selectEngine = async function (aEvent, isNextEngine) {
+
+					// Stop event bubbling now, because the rest of this method is async.
+					aEvent.preventDefault();
+					aEvent.stopPropagation();
+
+					// Find the new index.
+					let engines = await this.getEngines();
+					let currentName = this.currentEngine.name;
+					let newIndex = -1;
+					let lastIndex = engines.length - 1;
+					for (let i = lastIndex; i >= 0; --i) {
+						if (engines[i].name == currentName) {
+							// Check bounds to cycle through the list of engines continuously.
+							if (!isNextEngine && i == 0) {
+								newIndex = lastIndex;
+							} else if (isNextEngine && i == lastIndex) {
+								newIndex = 0;
+							} else {
+								newIndex = i + (isNextEngine ? 1 : -1);
+							}
+							break;
+						}
+					}
+
+					this.currentEngine = engines[newIndex];
+				};
+
+				// main style sheet
+				function updateStyleSheet() {
+					var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"].getService(Components.interfaces.nsIStyleSheetService);
+
+					var hide_oneoff_search_engines_code = '';
+					var show_search_engine_names_code = '';
+					var show_search_engine_names_with_scrollbar_code = '';
+					var hide_addengines_plus_indicator_code = '';
+					var switch_glass_and_engine_icon_code = '';
+
+					if (hide_oneoff_search_engines)
+						hide_oneoff_search_engines_code = ' \
 		  #PopupSearchAutoComplete .search-panel-header, \
 		  #PopupSearchAutoComplete .search-one-offs { \
 			display: none !important; \
 		  } \
 		';
 
-	  if(hide_addengines_plus_indicator)
-	   hide_addengines_plus_indicator_code=' \
+					if (hide_addengines_plus_indicator)
+						hide_addengines_plus_indicator_code = ' \
 	     .searchbar-search-button[addengines=true]::after { \
 		   visibility: hidden !important; \
 		 } \
 	   ';
 
-	  if(show_search_engine_names && !hide_oneoff_search_engines && appversion < 66)
-	   show_search_engine_names_code=' \
+					if (show_search_engine_names && !hide_oneoff_search_engines && appversion < 66)
+						show_search_engine_names_code = ' \
 		#PopupSearchAutoComplete .search-panel-tree:not([collapsed="true"]) { \
 		  display: block !important; \
 		  width: 100% !important; \
@@ -354,8 +427,8 @@ var AltSearchbar = {
 		} \
 		';
 
-	  if(show_search_engine_names && !hide_oneoff_search_engines && appversion >= 66 && appversion < 70)
-	   show_search_engine_names_code=' \
+					if (show_search_engine_names && !hide_oneoff_search_engines && appversion >= 66 && appversion < 70)
+						show_search_engine_names_code = ' \
 		#PopupSearchAutoComplete .search-panel-tree:not([collapsed="true"]) { \
 		  display: block !important; \
 		  width: 100% !important; \
@@ -447,9 +520,9 @@ var AltSearchbar = {
 		  opacity: 0 !important; \
 		} \
 		';
-		
-	  if(show_search_engine_names && !hide_oneoff_search_engines && appversion >= 70)
-	   show_search_engine_names_code=' \
+
+					if (show_search_engine_names && !hide_oneoff_search_engines && appversion >= 70)
+						show_search_engine_names_code = ' \
 		#PopupSearchAutoComplete .search-panel-one-offs .searchbar-engine-one-off-item { \
 		  -moz-appearance:none !important; \
 		  min-width: 0 !important; \
@@ -550,21 +623,21 @@ var AltSearchbar = {
 		} \
    		';
 
-	  if(show_search_engine_names_with_scrollbar && !hide_oneoff_search_engines && show_search_engine_names)
-	   show_search_engine_names_with_scrollbar_code=' \
+					if (show_search_engine_names_with_scrollbar && !hide_oneoff_search_engines && show_search_engine_names)
+						show_search_engine_names_with_scrollbar_code = ' \
 		#PopupSearchAutoComplete .search-one-offs { \
-		  height: '+show_search_engine_names_with_scrollbar_height+' !important; \
-		  max-height: '+show_search_engine_names_with_scrollbar_height+' !important; \
+		  height: '+ show_search_engine_names_with_scrollbar_height + ' !important; \
+		  max-height: '+ show_search_engine_names_with_scrollbar_height + ' !important; \
 		  overflow-y: scroll !important; \
 		  overflow-x: hidden !important; \
 		} \
 		\
 		';
 
-	  if(switch_glass_and_engine_icon)
-	   switch_glass_and_engine_icon_code=' \
+					if (switch_glass_and_engine_icon)
+						switch_glass_and_engine_icon_code = ' \
 		.search-go-button { \
-		  list-style-image: url('+document.getElementById("searchbar").currentEngine.iconURI.spec+') !important; \
+		  list-style-image: url('+ document.getElementById("searchbar").currentEngine.iconURI.spec + ') !important; \
 		  transform: scaleX(1) !important; \
 		} \
 		.searchbar-search-button .searchbar-search-icon { \
@@ -582,13 +655,13 @@ var AltSearchbar = {
 		\
 		';
 
-	  var uri = Services.io.newURI("data:text/css;charset=utf-8," + encodeURIComponent(' \
+					var uri = Services.io.newURI("data:text/css;charset=utf-8," + encodeURIComponent(' \
 		\
 		#searchbuttonpopup {\
 		  -moz-margin-start: -1px; \
 		} \
 		.searchbar-search-button .searchbar-search-icon { \
-		  list-style-image: url('+document.getElementById("searchbar").currentEngine.iconURI.spec+') !important; \
+		  list-style-image: url('+ document.getElementById("searchbar").currentEngine.iconURI.spec + ') !important; \
 		} \
 		.search-go-button { \
 		  list-style-image: url("chrome://browser/skin/search-glass.svg") !important; \
@@ -634,27 +707,27 @@ var AltSearchbar = {
 		.searchbar-search-button[addengines=true] > .searchbar-search-icon-overlay { \
 		  visibility: visible !important; \
 		} \
-		'+hide_addengines_plus_indicator_code+' \
-		'+hide_oneoff_search_engines_code+' \
-		'+show_search_engine_names_code+' \
-		'+show_search_engine_names_with_scrollbar_code+' \
-		'+switch_glass_and_engine_icon_code+' \
+		'+ hide_addengines_plus_indicator_code + ' \
+		'+ hide_oneoff_search_engines_code + ' \
+		'+ show_search_engine_names_code + ' \
+		'+ show_search_engine_names_with_scrollbar_code + ' \
+		'+ switch_glass_and_engine_icon_code + ' \
 		\
 	  '), null, null);
 
-	  // remove old style sheet
-	  if (sss.sheetRegistered(uri,sss.AGENT_SHEET)) {
-		sss.unregisterSheet(uri,sss.AGENT_SHEET);
-	  }
+					// remove old style sheet
+					if (sss.sheetRegistered(uri, sss.AGENT_SHEET)) {
+						sss.unregisterSheet(uri, sss.AGENT_SHEET);
+					}
 
-	  sss.loadAndRegisterSheet(uri, sss.AGENT_SHEET);
+					sss.loadAndRegisterSheet(uri, sss.AGENT_SHEET);
 
-	};
+				};
 
-   } catch(e) {} 
-  },1000);
+			} catch (e) { }
+		}, 1000);
 
- }
+	}
 }
 
 /* initialization delay workaround */
