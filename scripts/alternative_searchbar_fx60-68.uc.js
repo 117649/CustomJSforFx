@@ -50,9 +50,21 @@ var select_engine_by_click_oneoffs_button = true;
 var isInCustomize = 1; //start at 1 to set it once at startup
 
 var AltSearchbar = {
-	init: function () {
+	init: async function () {
 
-		setTimeout(function () {
+		await until(_ => Services.search.isInitialized == true);
+
+		function until(conditionFunction) {
+
+			const poll = resolve => {
+				if (conditionFunction()) resolve();
+				else setTimeout(_ => {console.log('waiting');poll(resolve);}, 400);
+			}
+
+			return new Promise(poll);
+		}
+
+		// setTimeout(function () {
 			try {
 				var searchbar = document.getElementById("searchbar");
 				var appversion = parseInt(Services.appinfo.version);
@@ -725,7 +737,7 @@ var AltSearchbar = {
 				};
 
 			} catch (e) { }
-		}, 1000);
+		// }, 1000);
 
 	}
 }
