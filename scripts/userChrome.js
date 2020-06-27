@@ -250,10 +250,6 @@ var AltSearchbar = {
 		  list-style-image: url('+ document.getElementById("searchbar").currentEngine.iconURI.spec + ') !important; \
 		  transform: scaleX(1) !important; \
         } \
-        .searchbar-dropmarker-image { \
-          list-style-image: url("chrome://classic_theme_restorer/content/images/searchbar-dropdown-arrow.png"); \
-          -moz-image-region: rect(0, 13px, 11px, 0); \
-        }\
 		.searchbar-search-button { \
 		  list-style-image: url("chrome://browser/skin/search-glass.svg") !important; \
 		  -moz-context-properties: fill, fill-opacity !important; \
@@ -278,6 +274,10 @@ var AltSearchbar = {
 		  list-style-image: url('+ document.getElementById("searchbar").currentEngine.iconURI.spec + ') !important; \
 		  -moz-image-region: unset !important; \
         } \
+        .searchbar-dropmarker-image { \
+          list-style-image: url("chrome://classic_theme_restorer/content/images/searchbar-dropdown-arrow.png"); \
+          -moz-image-region: rect(0, 13px, 11px, 0); \
+        }\
         .search-go-button { \
           list-style-image: url("chrome://classic_theme_restorer/content/images/search-glass.png") !important;\
           -moz-image-region: rect(0px, 16px, 16px, 0) !important;\
