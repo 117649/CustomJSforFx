@@ -177,6 +177,8 @@ var AltSearchbar = {
         var hide_addengines_plus_indicator_code = '';
         var switch_glass_and_engine_icon_code = '';
 
+        // document.getElementById("searchbar").textbox.children[0].children[0].setAttribute("anonid", "searchbar-search-button");
+
         if (hide_oneoff_search_engines)
           hide_oneoff_search_engines_code = ' \
 		  #PopupSearchAutoComplete .search-panel-header, \
