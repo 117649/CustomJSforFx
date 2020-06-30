@@ -31,7 +31,7 @@
 // Configuration area - start (all false beside last by default)
 var clear_searchbar_after_search = false; // clear input after search (true) or not (false)
 var revert_to_first_engine_after_search = false; // revert to first engine (true) or not (false)
-var select_engine_by_scrolling_over_button = true; // select search engine by scrolling mouse wheel over search bars button (true) or not (false)
+var select_engine_by_scrolling_over_button = false; // select search engine by scrolling mouse wheel over search bars button (true) or not (false)
 var hide_oneoff_search_engines = false; // hide 'one off' search engines (true) or not (false)
 var hide_addengines_plus_indicator = false; // hide add engines '+' sign (true) or not (false)
 var hide_placeholder = false; // hide placeholder (true) or not (false)
@@ -177,7 +177,7 @@ var AltSearchbar = {
         var hide_addengines_plus_indicator_code = '';
         var switch_glass_and_engine_icon_code = '';
 
-        // document.getElementById("searchbar").textbox.children[0].children[0].setAttribute("anonid", "searchbar-search-button");
+        document.getElementById("searchbar").textbox.children[0].children[0].setAttribute("anonid", "searchbar-search-button");
 
         if (hide_oneoff_search_engines)
           hide_oneoff_search_engines_code = ' \
@@ -248,7 +248,7 @@ var AltSearchbar = {
         if (switch_glass_and_engine_icon)
           switch_glass_and_engine_icon_code = ' \
 		.search-go-button { \
-		  list-style-image: url('+ document.getElementById("searchbar").currentEngine.iconURI.spec + ') !important; \
+		  list-style-image: url('+ (document.getElementById("searchbar").currentEngine.iconURI? document.getElementById("searchbar").currentEngine.iconURI.spec : "chrome://browser/skin/search-engine-placeholder.png") + ') !important; \
 		  transform: scaleX(1) !important; \
         } \
 		.searchbar-search-button { \
@@ -272,7 +272,7 @@ var AltSearchbar = {
 		  -moz-margin-start: -1px; \
 		} \
 		.searchbar-search-button { \
-		  list-style-image: url('+ document.getElementById("searchbar").currentEngine.iconURI.spec + ') !important; \
+		  list-style-image: url('+ (document.getElementById("searchbar").currentEngine.iconURI? document.getElementById("searchbar").currentEngine.iconURI.spec : "chrome://browser/skin/search-engine-placeholder.png") + ') !important; \
 		  -moz-image-region: unset !important; \
     } \
     .searchbar-dropmarker-image { \
